@@ -12,12 +12,12 @@ var url = "https://en.wikipedia.org/w/api.php";
 var params = {
     action: "query",
     prop: "revisions",
-    titles: "MIT_License",
+    titles: "Enteromius_teugelsi",
     rvprop: "timestamp|user|comment|content|ids",
     rvslots: "main",
     formatversion: 2,
     format: "json",
-    rvlimit: 3
+    rvlimit: 1
 };
 
 url = url + "?origin=*";
@@ -31,7 +31,9 @@ let pages = data.query.pages;
 
 for (let p in pages) {
     for (let rev of pages[p].revisions) {
-        console.log(rev.slots.main.content);
+        console.log("=====================");
+        console.log("'\x1b[33m%s\x1b[0m'", rev.slots.main.content);
+        console.log("=====================");
     }
 }
 
