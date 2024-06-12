@@ -13,21 +13,26 @@ var params = {
     action: "query",
     prop: "revisions",
     titles: "MIT_License",
-    rvprop: "timestamp|user|comment|content",
+    rvprop: "timestamp|user|comment|content|ids",
     rvslots: "main",
-    formatversion: "2",
-    format: "json"
+    formatversion: 2,
+    format: "json",
+    rvlimit: 3
 };
 
 url = url + "?origin=*";
-Object.keys(params).forEach(function(key){url += "&" + key + "=" + params[key];});
+for (const key in params)
+    url += "&" + key + "=" + params[key];
 
-fetch(url)
-    .then(function(response){return response.json();})
-    .then(function(response) {
-        var pages = response.query.pages;
-        for (var p in pages) {
-            console.log(pages[p].revisions);
-        }
-    })
-    .catch(function(error){console.log(error);});
+let data = await fetch(url)
+    .then(res => res.json());
+
+let pages = data.query.pages;
+
+for (let p in pages) {
+    for (let rev of pages[p].revisions) {
+        console.log(rev.slots.main.content);
+    }
+}
+
+export {}
