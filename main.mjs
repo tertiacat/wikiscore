@@ -7,34 +7,71 @@
     MIT License
 */
 
-var url = "https://en.wikipedia.org/w/api.php";
+function query(params) {
+    var url = "https://en.wikipedia.org/w/api.php";
 
-var params = {
-    action: "query",
-    prop: "revisions",
-    titles: "Enteromius_teugelsi",
-    rvprop: "timestamp|user|comment|content|ids",
-    rvslots: "main",
-    formatversion: 2,
-    format: "json",
-    rvlimit: 1
-};
+    url = url + "?origin=*";
+    for (const key in params)
+        url += "&" + key + "=" + params[key];
 
-url = url + "?origin=*";
-for (const key in params)
-    url += "&" + key + "=" + params[key];
+    return fetch(url).then(res => res.json());
+}
 
-let data = await fetch(url)
-    .then(res => res.json());
+const title = "Cultural_literacy";
 
-let pages = data.query.pages;
+let data = await (async () => {
+    let out = [];
+    let id = -1;
+    while (true) {
+        const querySize = 500;
 
-for (let p in pages) {
-    for (let rev of pages[p].revisions) {
-        console.log("=====================");
-        console.log("'\x1b[33m%s\x1b[0m'", rev.slots.main.content);
-        console.log("=====================");
+        let params = {
+            action: "query",
+            prop: "revisions",
+            titles: title,
+            //titles: "Enteromius_teugelsi",
+            rvprop: "timestamp|user|comment|ids",
+            rvslots: "main",
+            formatversion: 2,
+            format: "json",
+            rvlimit: querySize,
+        };
+
+        if (id != -1) params.rvstartid = id;
+
+        let data = await query(params).then(obj => obj.query.pages[0].revisions);
+         
+        for (let d of data)
+            out.push(d);
+
+        if (data.length != querySize) break;
+
+        id = data[querySize - 1].revid;
     }
+
+    return out;
+})();
+
+function parse(id) {
+    return query(
+        {
+            action: "parse",
+            format: "json",
+            oldid: id,
+        }
+    );
+}
+
+let html = [];
+for (let rev of data)
+    html.push(parse(rev.revid));
+
+let pages = await Promise.all(html);
+
+for (let rev of pages) {
+    console.log("=====================");
+    console.log("'\x1b[33m%s\x1b[0m'", pages[0].parse.text['*']);
+    console.log("=====================");
 }
 
 export {}
