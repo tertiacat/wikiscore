@@ -1,12 +1,3 @@
-/*
-    get_pages_revisions.js
-
-    MediaWiki API Demos
-    Demo of `Revisions` module: Get revision data with content for pages with titles [[API]] and [[Main Page]]
-
-    MIT License
-*/
-
 function query(params) {
     var url = "https://en.wikipedia.org/w/api.php";
 
@@ -14,10 +5,13 @@ function query(params) {
     for (const key in params)
         url += "&" + key + "=" + params[key];
 
+    console.log(url);
+
     return fetch(url).then(res => res.json());
 }
 
 const title = "Cultural_literacy";
+//const title = "Enteromius_teugelsi";
 
 let data = await (async () => {
     let out = [];
@@ -29,8 +23,7 @@ let data = await (async () => {
             action: "query",
             prop: "revisions",
             titles: title,
-            //titles: "Enteromius_teugelsi",
-            rvprop: "timestamp|user|comment|ids",
+            rvprop: "timestamp|user|comment|ids|content",
             rvslots: "main",
             formatversion: 2,
             format: "json",
@@ -49,29 +42,70 @@ let data = await (async () => {
         id = data[querySize - 1].revid;
     }
 
+    out.reverse();
+
     return out;
 })();
 
-function parse(id) {
-    return query(
-        {
-            action: "parse",
-            format: "json",
-            oldid: id,
-        }
-    );
-}
+let xml = [];
 
-let html = [];
 for (let rev of data)
-    html.push(parse(rev.revid));
+    xml.push(rev.slots.main.content.split(/\s+/));
 
-let pages = await Promise.all(html);
+function existence(age, start, target) {
+    let map = {};
+    for (let i = 0; i < start.length; i++) {
+        map[start[i]] = age[i] + 1;
+    }
 
-for (let rev of pages) {
-    console.log("=====================");
-    console.log("'\x1b[33m%s\x1b[0m'", pages[0].parse.text['*']);
-    console.log("=====================");
+    let out = [];
+    for (let i = 0; i < target.length; i++) {
+        out[i] = map[target[i]] ?? 0;
+    }
+
+    return out;
 }
+
+function movesQuadratic(age, start, target) {
+    let out = new Array(target.length).fill(0);
+    let len = new Array(target.length).fill(0);
+
+    for (let i = 0; i < start.length; ) {
+        let maxl = 1;
+        let targetStart = -1;
+        for (let j = 0; j < target.length; j++) {
+            let l = 0;
+            while (i + l < start.length && j + l < target.length
+                   && start[i + l] == target[j + l]) l++;
+
+            if (l > maxl) {
+                maxl = l;
+                targetStart = j;
+            }
+        }
+
+        if (targetStart != -1) {
+            for (let j = 0; j < maxl; j++) {
+                if (len[targetStart + j] < maxl) {
+                    len[targetStart + j] = maxl;
+                    out[targetStart + j] = age[i + j] + 1;
+                }
+            }
+        }
+
+        i += maxl;
+    }
+
+    return out;
+}
+
+let computeDiff = movesQuadratic;
+
+let age = new Array(xml[0].length).fill(0);
+for (let i = 1; i < xml.length; i++) {
+    age = computeDiff(age, xml[i - 1], xml[i]);
+}
+
+console.log(age);
 
 export {}
