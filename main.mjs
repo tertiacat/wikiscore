@@ -1,3 +1,7 @@
+import { existence } from "./existence.mjs";
+import { movesQuadratic } from "./quadratic.mjs";
+import { movesLinear } from "./linear.mjs";
+
 function query(params) {
     var url = "https://en.wikipedia.org/w/api.php";
 
@@ -10,8 +14,8 @@ function query(params) {
     return fetch(url).then(res => res.json());
 }
 
-const title = "Cultural_literacy";
-//const title = "Enteromius_teugelsi";
+//const title = "Cultural_literacy";
+const title = "Enteromius_teugelsi";
 
 let data = await (async () => {
     let out = [];
@@ -52,60 +56,15 @@ let xml = [];
 for (let rev of data)
     xml.push(rev.slots.main.content.split(/\s+/));
 
-function existence(age, start, target) {
-    let map = {};
-    for (let i = 0; i < start.length; i++) {
-        map[start[i]] = age[i] + 1;
-    }
-
-    let out = [];
-    for (let i = 0; i < target.length; i++) {
-        out[i] = map[target[i]] ?? 0;
-    }
-
-    return out;
-}
-
-function movesQuadratic(age, start, target) {
-    let out = new Array(target.length).fill(0);
-    let len = new Array(target.length).fill(0);
-
-    for (let i = 0; i < start.length; ) {
-        let maxl = 1;
-        let targetStart = -1;
-        for (let j = 0; j < target.length; j++) {
-            let l = 0;
-            while (i + l < start.length && j + l < target.length
-                   && start[i + l] == target[j + l]) l++;
-
-            if (l > maxl) {
-                maxl = l;
-                targetStart = j;
-            }
-        }
-
-        if (targetStart != -1) {
-            for (let j = 0; j < maxl; j++) {
-                if (len[targetStart + j] < maxl) {
-                    len[targetStart + j] = maxl;
-                    out[targetStart + j] = age[i + j] + 1;
-                }
-            }
-        }
-
-        i += maxl;
-    }
-
-    return out;
-}
-
 let computeDiff = movesQuadratic;
 
 let age = new Array(xml[0].length).fill(0);
 for (let i = 1; i < xml.length; i++) {
     age = computeDiff(age, xml[i - 1], xml[i]);
-}
 
-console.log(age);
+    //console.log("\n");
+    //for (let j = 0; j < xml[i].length; j++)
+    //    console.log(age[j], xml[i][j]);
+}
 
 export {}
