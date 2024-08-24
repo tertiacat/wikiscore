@@ -53,7 +53,7 @@ function movesQuadraticOnline(age, start, target) {
             for (let j = 0; j < maxl; j++) {
                 if (!upd[targetStart + j]) {
                     upd[targetStart + j] = true;
-                    age[i + j]++;
+                    age[targetStart + j]++;
                 }
             }
         }
