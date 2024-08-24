@@ -14,8 +14,9 @@ function query(params) {
     return fetch(url).then(res => res.json());
 }
 
+const title = "William_Shakespeare";
 //const title = "Cultural_literacy";
-const title = "Enteromius_teugelsi";
+//const title = "Enteromius_teugelsi";
 
 let data = await (async () => {
     let out = [];
@@ -58,13 +59,15 @@ for (let rev of data)
 
 let computeDiff = movesQuadratic;
 
+let start = new Date();
+
 let age = new Array(xml[0].length).fill(0);
 for (let i = 1; i < xml.length; i++) {
     age = computeDiff(age, xml[i - 1], xml[i]);
-
-    //console.log("\n");
-    //for (let j = 0; j < xml[i].length; j++)
-    //    console.log(age[j], xml[i][j]);
 }
+
+let end = new Date();
+
+console.log(end - start);
 
 export {}

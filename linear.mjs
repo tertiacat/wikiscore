@@ -68,7 +68,71 @@ function suffixArray(str) {
     return p;
 }
 
-function movesLinear() {
+function movesLinear(age, start, target) {
+    let out = new Array(target.length).fill(0);
+    let len = new Array(target.length).fill(0);
+
+    let suffix = suffixArray(target);
+
+    for (let i = 0; i < start.length; ) {
+        let targetStart = -1;
+
+        let exist = (k) => {
+            let ok = 0;
+            let ng = target.length;
+
+            while (ng - ok > 1) {
+                let mid = Math.floor((ng + ok) / 2);
+
+                let leq = true;
+                for (let j = 0; j < k && j < target.length - suffix[mid]; j++) {
+                    if (target[suffix[mid] + j] < start[i + j]) break;
+
+                    if (target[suffix[mid] + j] > start[i + j]) {
+                        leq = false;
+                        break;
+                    }
+                }
+
+                if (leq) ok = mid;
+                else ng = mid;
+            }
+
+            if (k > target.length - suffix[ok]) return false;
+
+            for (let j = 0; j < k; j++) {
+                if (target[suffix[ok] + j] != start[i + j]) return false;
+            }
+
+            targetStart = suffix[ok];
+
+            return true;
+        };
+
+        let ok = 0;
+        let ng = Math.min(target.length, start.length - i) + 1;
+
+        while (ng - ok > 1) {
+            let mid = Math.floor((ng + ok) / 2);
+            if (exist(mid)) ok = mid;
+            else ng = mid;
+        }
+
+        let maxl = ok;
+
+        if (targetStart != -1) {
+            for (let j = 0; j < maxl; j++) {
+                if (len[targetStart + j] < maxl) {
+                    len[targetStart + j] = maxl;
+                    out[targetStart + j] = age[i + j] + 1;
+                }
+            }
+        }
+
+        i += Math.max(maxl, 1);
+    }
+
+    return out;
 }
 
 export { movesLinear };

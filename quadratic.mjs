@@ -3,7 +3,7 @@ function movesQuadratic(age, start, target) {
     let len = new Array(target.length).fill(0);
 
     for (let i = 0; i < start.length; ) {
-        let maxl = 1;
+        let maxl = 0;
         let targetStart = -1;
         for (let j = 0; j < target.length; j++) {
             let l = 0;
@@ -25,7 +25,7 @@ function movesQuadratic(age, start, target) {
             }
         }
 
-        i += maxl;
+        i += Math.max(maxl, 1);
     }
 
     return out;
