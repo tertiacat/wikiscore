@@ -1,6 +1,10 @@
 // use suffix arrays to find substring
 // implementation 
 // courtesy of https://cp-algorithms.com/string/suffix-array.html
+//
+// NOTE: Due to the fact that each revision of articles contain very minor
+// changes in them, as it is recommended to commit minor changes, it's faster to
+// use the quadratic option than this one for constant factor reasons
 
 function sortCyclicShifts(str) {
     let n = str.length;
@@ -136,4 +140,3 @@ function movesLinear(age, start, target) {
 }
 
 export { movesLinear };
-
