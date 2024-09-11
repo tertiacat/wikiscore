@@ -16,7 +16,30 @@ function query(params) {
 //const title = "United_States";
 //const title = "William_Shakespeare";
 const title = "Cultural_literacy";
+//const title = "E._D._Hirsch";
 //const title = "Enteromius_teugelsi";
+
+function processXML(xml) {
+    let angle = 0;
+    let braces = 0;
+
+    xml = xml.split(/==\s*References\s*==/)[0];
+
+    let result = 0;
+
+    for (let i = 0; i < xml.length; i++) {
+        // NOTE: This is random hack to do things
+        if (xml[i] === "<") angle++;
+        if (xml[i] === "{") braces++;
+
+        if (angle === 0 && braces === 0 && xml[i] !== '=' && xml[i] !== '*') result += xml[i];
+
+        if (xml[i] === ">") angle--;
+        if (xml[i] === "}") braces--;
+    }
+
+    return result;
+}
 
 async function computeAge(title) {
     let out = [];
@@ -52,12 +75,15 @@ async function computeAge(title) {
         let start = new Date();
          
         for (let rev of data.query.pages[0].revisions) {
-            let xml = rev.slots.main.content.split(/\s+/);
+            let content = processXML(rev.slots.main.content);
+            let xml = content.split(/\s+/);
 
             if (target === -1) {
+                console.log(content);
                 target = xml;
                 age = new Array(target.length).fill(0);
             } else {
+                // TODO: do more sophisticated online algo
                 movesQuadraticOnline(age, xml, target);
             }
         }
