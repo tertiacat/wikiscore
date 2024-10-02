@@ -1,4 +1,4 @@
-import { movesQuadratic, movesQuadraticOnline } from "./quadratic.mjs";
+import { movesQuadratic } from "./quadratic.mjs";
 //import { movesLinear, movesLinearOnline } from "./linear.mjs";
 
 function query(params) {
@@ -25,7 +25,7 @@ function processXML(xml) {
 
     xml = xml.split(/==\s*References\s*==/)[0];
 
-    let result = 0;
+    let result = '';
 
     for (let i = 0; i < xml.length; i++) {
         // NOTE: This is random hack to do things
@@ -41,7 +41,7 @@ function processXML(xml) {
     return result;
 }
 
-async function computeAge(title) {
+async function computeAgeOnline(title) {
     let out = [];
     let id = -1;
 
@@ -58,11 +58,11 @@ async function computeAge(title) {
 
     let target = -1;
     let age = [];
+    let redir = [];
 
     let promise = query(params);
 
     while (true) {
-
         if (id != -1) params.rvstartid = id;
 
         let data = await promise;
@@ -74,12 +74,12 @@ async function computeAge(title) {
 
         let start = new Date();
          
-        for (let rev of data.query.pages[0].revisions) {
+        for (let i = 0; i < data.query.pages[0].revisions.length; i++) {
+            let rev = data.query.pages[0].revisions[i];
             let content = processXML(rev.slots.main.content);
-            let xml = content.split(/\s+/);
+            let xml = content.trim().split(/\s+/);
 
             if (target === -1) {
-                console.log(content);
                 target = xml;
                 age = new Array(target.length).fill(0);
             } else {
@@ -98,57 +98,74 @@ async function computeAge(title) {
     return age;
 }
 
-let age = await computeAge(title);
-console.log(age);
+async function computeAgeOffline(title) {
+    let data = await (async () => {
+        let out = [];
+        let id = -1;
 
-//let data = await (async () => {
-//    let out = [];
-//    let id = -1;
-//
-//    let params = {
-//        action: "query",
-//        prop: "revisions",
-//        titles: title,
-//        rvprop: "timestamp|user|comment|ids|content",
-//        rvslots: "main",
-//        formatversion: 2,
-//        format: "json",
-//        rvlimit: 50,
-//    };
-//
-//    while (true) {
-//
-//        if (id != -1) params.rvstartid = id;
-//
-//        let data = await query(params);
-//         
-//        for (let d of data.query.pages[0].revisions)
-//            out.push(d);
-//
-//        if (data.batchcomplete) break;
-//
-//        params.rvcontinue = data.continue.rvcontinue;
-//    }
-//
-//    out.reverse();
-//
-//    return out;
-//})();
-//
-//let xml = [];
-//
-//for (let rev of data)
-//    xml.push(rev.slots.main.content.split(/\s+/));
-//
-//let computeDiff = movesQuadratic;
-//
-//{
-//let age = new Array(xml[0].length).fill(0);
-//for (let i = 1; i < xml.length; i++) {
-//    age = computeDiff(age, xml[i - 1], xml[i]);
-//}
-//
-//console.log(age);
-//}
+        let params = {
+            action: "query",
+            prop: "revisions",
+            titles: title,
+            rvprop: "timestamp|user|comment|ids|content",
+            rvslots: "main",
+            formatversion: 2,
+            format: "json",
+            rvlimit: 50,
+        };
+
+        while (true) {
+
+            if (id != -1) params.rvstartid = id;
+
+            let data = await query(params);
+             
+            for (let d of data.query.pages[0].revisions)
+                out.push(d);
+
+            if (data.batchcomplete) break;
+
+            params.rvcontinue = data.continue.rvcontinue;
+        }
+
+        out.reverse();
+
+        return out;
+    })();
+
+    let xml = [];
+
+    for (let rev of data)
+        xml.push(processXML(rev.slots.main.content).trim().split(/\s+/));
+
+    let age = new Array(xml[0].length).fill(0);
+    for (let i = 1; i < xml.length; i++) {
+        let redir = movesQuadratic(xml[i - 1], xml[i]);
+        let upd = new Array(xml[i].length).fill(0);
+
+        for (let j = 0; j < redir.length; j++)
+            if (redir[j] != -1)
+                upd[redir[j]] = age[j] + 1;
+
+        age = upd;
+    }
+
+    return age;
+}
+
+let age = await computeAgeOffline(title);
+//let age2 = await computeAgeOnline(title);
+
+const prob = 0.99;
+
+for (let i = 0; i < age.length; i++)
+    age[i] = (1 - Math.pow(prob, age[i]));
+
+let mx = -1;
+for (let i = 0; i < age.length; i++) mx = Math.max(mx, age[i]);
+for (let i = 0; i < age.length; i++) age[i] = Math.floor(age[i] / mx * 256);
+
+console.log(JSON.stringify(age));
+console.log(age.length);
 
 export {}

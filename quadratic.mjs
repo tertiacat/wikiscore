@@ -1,6 +1,6 @@
-function movesQuadratic(age, start, target) {
-    let out = new Array(target.length).fill(0);
+function movesQuadratic(start, target) {
     let len = new Array(target.length).fill(0);
+    let inv = new Array(target.length).fill(-1);
 
     for (let i = 0; i < start.length; ) {
         let maxl = 0;
@@ -20,7 +20,7 @@ function movesQuadratic(age, start, target) {
             for (let j = 0; j < maxl; j++) {
                 if (len[targetStart + j] < maxl) {
                     len[targetStart + j] = maxl;
-                    out[targetStart + j] = age[i + j] + 1;
+                    inv[targetStart + j] = i + j;
                 }
             }
         }
@@ -28,38 +28,11 @@ function movesQuadratic(age, start, target) {
         i += Math.max(maxl, 1);
     }
 
-    return out;
+    let redir = new Array(start.length).fill(-1);
+    for (let i = 0; i < target.length; i++)
+        if (inv[i] != -1) redir[inv[i]] = i;
+
+    return redir;
 }
 
-function movesQuadraticOnline(age, start, target) {
-    let out = new Array(target.length).fill(0);
-    let upd = new Array(target.length).fill(false);
-
-    for (let i = 0; i < start.length; ) {
-        let maxl = 0;
-        let targetStart = -1;
-        for (let j = 0; j < target.length; j++) {
-            let l = 0;
-            while (i + l < start.length && j + l < target.length
-                   && start[i + l] == target[j + l]) l++;
-
-            if (l > maxl) {
-                maxl = l;
-                targetStart = j;
-            }
-        }
-
-        if (targetStart != -1) {
-            for (let j = 0; j < maxl; j++) {
-                if (!upd[targetStart + j]) {
-                    upd[targetStart + j] = true;
-                    age[targetStart + j]++;
-                }
-            }
-        }
-
-        i += Math.max(maxl, 1);
-    }
-}
-
-export { movesQuadratic, movesQuadraticOnline };
+export { movesQuadratic };
