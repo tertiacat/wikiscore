@@ -56,7 +56,7 @@ async function computeAgeOnline(title) {
         rvlimit: 50,
     };
 
-    let target = -1;
+    let prev = -1;
     let age = [];
     let redir = [];
 
@@ -79,13 +79,22 @@ async function computeAgeOnline(title) {
             let content = processXML(rev.slots.main.content);
             let xml = content.trim().split(/\s+/);
 
-            if (target === -1) {
-                target = xml;
-                age = new Array(target.length).fill(0);
+            if (prev === -1) {
+                age = new Array(xml.length).fill(-1);
+                redir = new Array(xml.length).fill(0);
+                for (let j = 0; j < redir.length; j++) redir[j] = j;
+
+                prev = xml;
             } else {
-                // TODO: do more sophisticated online algo
-                movesQuadraticOnline(age, xml, target);
+                let rd = movesQuadratic(xml, prev);
+                prev = xml;
+
+                for (let j = 0; j < rd.length; j++) rd[j] = redir[rd[j]];
+                redir = rd;
             }
+
+            for (let j = 0; j < redir.length; j++)
+                age[redir[j]]++;
         }
 
         let end = new Date();
@@ -153,7 +162,7 @@ async function computeAgeOffline(title) {
     return age;
 }
 
-let age = await computeAgeOffline(title);
+let age = await computeAgeOnline(title);
 //let age2 = await computeAgeOnline(title);
 
 const prob = 0.99;
