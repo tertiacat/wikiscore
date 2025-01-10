@@ -13,11 +13,7 @@ function query(params) {
     return fetch(url).then(res => res.json());
 }
 
-//const title = "United_States";
-//const title = "William_Shakespeare";
-const title = "Cultural_literacy";
-//const title = "E._D._Hirsch";
-//const title = "Enteromius_teugelsi";
+const TEST = false;
 
 function processXML(xml) {
     let angle = 0;
@@ -41,6 +37,21 @@ function processXML(xml) {
     return result;
 }
 
+function ageToProb(age) {
+    const r = 0.95;
+    const c = 0.3;
+
+    let prob = []
+
+    for (let i = 0; i < age.length; i++)
+        prob[i] = c / ((1 - c) * Math.pow(r, age[i]) + c);
+
+    return prob;
+}
+
+let error = [];
+let count = 90;
+
 async function computeAgeOnline(title) {
     let out = [];
     let id = -1;
@@ -62,6 +73,11 @@ async function computeAgeOnline(title) {
 
     let promise = query(params);
 
+    let start = new Date();
+
+    let probs = [];
+    let times = [];
+
     while (true) {
         if (id != -1) params.rvstartid = id;
 
@@ -71,8 +87,6 @@ async function computeAgeOnline(title) {
             params.rvcontinue = data.continue.rvcontinue;
             promise = query(params);
         }
-
-        let start = new Date();
          
         for (let i = 0; i < data.query.pages[0].revisions.length; i++) {
             let rev = data.query.pages[0].revisions[i];
@@ -95,13 +109,38 @@ async function computeAgeOnline(title) {
 
             for (let j = 0; j < redir.length; j++)
                 age[redir[j]]++;
+
+            if (TEST) {
+                const trial = 0.99;
+                let prob = [];
+
+                for (let i = 0; i < age.length; i++) 
+                    prob[i] = (1 - Math.pow(trial, age[i]));
+
+                probs.push(prob);
+            }
         }
 
         let end = new Date();
 
-        console.log(end - start);
-
         if (data.batchcomplete) break;
+    }
+
+    if (TEST) {
+        let avgError = [];
+        for (let i = 0; i < probs.length; i++) {
+            let sum = 0;
+            for (let j = 0; j < probs[i].length; j++) {
+                sum += Math.abs(probs[i][j] - probs[probs.length - 1][j]);
+            }
+            avgError.push(sum / probs[i].length);
+        }
+
+        for (let i = 0; i < avgError.length; i++) {
+            if (error[i] === undefined) error[i] = 0;
+            error[i] += avgError[i];
+        }
+        count++;
     }
 
     return age;
@@ -162,19 +201,59 @@ async function computeAgeOffline(title) {
     return age;
 }
 
+if (TEST) {
+    let sample = 10;
+    let attempt = 10;
+
+    let start = new Date();
+    while (sample > 0) {
+        let params = {
+            format: "json",
+            action: "query",
+            generator: "random",
+            grnnamespace: "0",
+            grnlimit: attempt,
+        };
+
+        let titles = await query(params);
+
+        for (let id in titles.query.pages) {
+            let title = titles.query.pages[id].title;
+
+            await computeAgeOnline(title);
+        }
+
+        sample -= attempt;
+
+        console.log(JSON.stringify(error));
+        console.log(JSON.stringify(count));
+    }
+
+    let end = new Date();
+
+    for (let i = 0; i < error.length; i++)
+        error[i] /= count;
+
+    console.log(JSON.stringify(error));
+    console.log(end - start);
+}
+
+
+//const title = "United_States";
+//const title = "William_Shakespeare";
+//const title = "Cultural_literacy";
+const title = "E._D._Hirsch";
+//const title = "Enteromius_teugelsi";
+//const title = "Enculturation";
+//const title = "Nasookin";
+
 let age = await computeAgeOnline(title);
-//let age2 = await computeAgeOnline(title);
+let prob = ageToProb(age);
 
-const prob = 0.99;
-
-for (let i = 0; i < age.length; i++)
-    age[i] = (1 - Math.pow(prob, age[i]));
-
-let mx = -1;
-for (let i = 0; i < age.length; i++) mx = Math.max(mx, age[i]);
-for (let i = 0; i < age.length; i++) age[i] = Math.floor(age[i] / mx * 256);
+for (let i = 0; i < prob.length; i++) prob[i] = Math.floor(prob[i] * 256);
 
 console.log(JSON.stringify(age));
-console.log(age.length);
+console.log(JSON.stringify(prob));
+console.log(prob.length);
 
 export {}
