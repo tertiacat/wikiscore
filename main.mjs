@@ -10,7 +10,9 @@ function query(params) {
 
     console.log(url);
 
-    return fetch(url).then(res => res.json());
+    return fetch(url)
+        .catch(err => console.error(err))
+        .then(res => res.json());
 }
 
 const TEST = false;
@@ -19,22 +21,13 @@ function processXML(xml) {
     let angle = 0;
     let braces = 0;
 
+    // NOTE: Don't mind the ugly hacks
     xml = xml.split(/==\s*References\s*==/)[0];
+    xml = xml.replace(/\{\{.+?\}\}/gs, "");
+    xml = xml.replace(/<.+?>/gs, "");
+    xml = xml.replace(/\[\[[^\[\]]+?\|(.+?)\]\]/gs, "[[$1]]");
 
-    let result = '';
-
-    for (let i = 0; i < xml.length; i++) {
-        // NOTE: This is random hack to do things
-        if (xml[i] === "<") angle++;
-        if (xml[i] === "{") braces++;
-
-        if (angle === 0 && braces === 0 && xml[i] !== '=' && xml[i] !== '*') result += xml[i];
-
-        if (xml[i] === ">") angle--;
-        if (xml[i] === "}") braces--;
-    }
-
-    return result;
+    return xml;
 }
 
 function ageToProb(age) {
@@ -49,8 +42,9 @@ function ageToProb(age) {
     return prob;
 }
 
-let error = [];
-let count = 90;
+let average = [];
+let max = [];
+let count = 0;
 
 async function computeAgeOnline(title) {
     let out = [];
@@ -90,6 +84,9 @@ async function computeAgeOnline(title) {
          
         for (let i = 0; i < data.query.pages[0].revisions.length; i++) {
             let rev = data.query.pages[0].revisions[i];
+
+            if (rev.slots.main.texthidden) continue;
+
             let content = processXML(rev.slots.main.content);
             let xml = content.trim().split(/\s+/);
 
@@ -111,12 +108,7 @@ async function computeAgeOnline(title) {
                 age[redir[j]]++;
 
             if (TEST) {
-                const trial = 0.99;
-                let prob = [];
-
-                for (let i = 0; i < age.length; i++) 
-                    prob[i] = (1 - Math.pow(trial, age[i]));
-
+                let prob = ageToProb(age);
                 probs.push(prob);
             }
         }
@@ -127,19 +119,26 @@ async function computeAgeOnline(title) {
     }
 
     if (TEST) {
-        let avgError = [];
+        let avgi = -1;
+        let maxi = -1;
+
         for (let i = 0; i < probs.length; i++) {
             let sum = 0;
+            let mx = 0;
             for (let j = 0; j < probs[i].length; j++) {
-                sum += Math.abs(probs[i][j] - probs[probs.length - 1][j]);
+                let er = Math.abs(probs[i][j] - probs[probs.length - 1][j]);
+                sum += er;
+                mx = Math.max(mx, er);
             }
-            avgError.push(sum / probs[i].length);
+
+            let avg = sum / probs[i].ength;
+
+            if (mx <= 0.05 && maxi == -1) maxi = i;
+            if (sum / probs[i].length <= 0.05 && avgi == -1) avgi = i;
         }
 
-        for (let i = 0; i < avgError.length; i++) {
-            if (error[i] === undefined) error[i] = 0;
-            error[i] += avgError[i];
-        }
+        average.push(avgi);
+        max.push(maxi);
         count++;
     }
 
@@ -183,8 +182,10 @@ async function computeAgeOffline(title) {
 
     let xml = [];
 
-    for (let rev of data)
+    for (let rev of data) {
+        if (rev.slots.main.texthidden) continue;
         xml.push(processXML(rev.slots.main.content).trim().split(/\s+/));
+    }
 
     let age = new Array(xml[0].length).fill(0);
     for (let i = 1; i < xml.length; i++) {
@@ -196,13 +197,18 @@ async function computeAgeOffline(title) {
                 upd[redir[j]] = age[j] + 1;
 
         age = upd;
+
+        let prob = ageToProb(age);
+        for (let i = 0; i < prob.length; i++) prob[i] = Math.floor(prob[i] * 256);
+        console.log(JSON.stringify(xml[i]));
+        console.log(JSON.stringify(prob));
     }
 
     return age;
 }
 
 if (TEST) {
-    let sample = 10;
+    let sample = 100 - count;
     let attempt = 10;
 
     let start = new Date();
@@ -225,30 +231,30 @@ if (TEST) {
 
         sample -= attempt;
 
-        console.log(JSON.stringify(error));
-        console.log(JSON.stringify(count));
+        console.log(JSON.stringify(average));
+        console.log(JSON.stringify(max));
+        console.log(count);
     }
 
     let end = new Date();
 
-    for (let i = 0; i < error.length; i++)
-        error[i] /= count;
-
-    console.log(JSON.stringify(error));
+    console.log(average, max);
     console.log(end - start);
 }
 
-
 //const title = "United_States";
 //const title = "William_Shakespeare";
-//const title = "Cultural_literacy";
-const title = "E._D._Hirsch";
+const title = "Cultural_literacy";
+//const title = "Herbert_(Family_Guy)";
+//const title = "E._D._Hirsch";
 //const title = "Enteromius_teugelsi";
 //const title = "Enculturation";
 //const title = "Nasookin";
 
 let age = await computeAgeOnline(title);
 let prob = ageToProb(age);
+
+console.log(JSON.stringify(prob));
 
 for (let i = 0; i < prob.length; i++) prob[i] = Math.floor(prob[i] * 256);
 
